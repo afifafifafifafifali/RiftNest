@@ -1,0 +1,3 @@
+id,code,desc
+1,"0xA0001","QEMU is not installed on your machine. Perhaps try adding it to your $PATH environment variable."
+2,"0xA0002","QEMU IS installed on your machine, but its version is lower than 10.0.0. Upgrade to a newer release."
