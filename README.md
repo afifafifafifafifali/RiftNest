@@ -31,7 +31,7 @@ Optional (for networking):
 ## Installation
 
 ```sh
-git clone https://github.com/youruser/riftnest.git
+git clone https://github.com/afifafifafifafifali/RiftNest.git
 cd riftnest
 make
 ```
