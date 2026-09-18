@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
+
 static const char *proot_bin_path(void)
 {
     static char buf[4096];
@@ -106,6 +106,90 @@ static int run_proot(const char *rootfs, int argc, char **argv)
     return -1;
 }
 
+static int run_proot_in_ns(const char *instance_name, const char *rootfs,
+                           int argc, char **argv)
+{
+    char nsenter_cmd[4096];
+    if (proot_net_nsenter_cmd(instance_name, nsenter_cmd, sizeof(nsenter_cmd)) != 0) {
+        riftprint("WARN: failed to get network namespace, running without network");
+        return run_proot(rootfs, argc, argv);
+    }
+
+    const char *bin = proot_bin_path();
+
+    char rootfs_arg[4096];
+    snprintf(rootfs_arg, sizeof(rootfs_arg), "%s", rootfs);
+
+    riftprint("Running inside network namespace (net up for '%s')", instance_name);
+
+    int cmd_argc = argc + 20;
+    char **cmd_argv = calloc(cmd_argc + 1, sizeof(char *));
+    if (!cmd_argv)
+        return run_proot(rootfs, argc, argv);
+
+    int i = 0;
+    cmd_argv[i++] = "nsenter";
+    cmd_argv[i++] = "--net";
+
+    char ns_path[512];
+    char pidfile[4096];
+    snprintf(pidfile, sizeof(pidfile), "%s/%s.pid", rn_net_dir(), instance_name);
+    FILE *f = fopen(pidfile, "r");
+    if (f) {
+        char pidstr[64] = {0};
+        if (fgets(pidstr, sizeof(pidstr), f)) {
+            size_t len = strlen(pidstr);
+            if (len > 0 && pidstr[len - 1] == '\n')
+                pidstr[len - 1] = '\0';
+            snprintf(ns_path, sizeof(ns_path), "/proc/%s/ns/net", pidstr);
+            cmd_argv[i++] = ns_path;
+        }
+        fclose(f);
+    }
+
+    cmd_argv[i++] = "--";
+    cmd_argv[i++] = (char *)bin;
+    cmd_argv[i++] = "-r";
+    cmd_argv[i++] = rootfs_arg;
+    cmd_argv[i++] = "-b";
+    cmd_argv[i++] = "/proc";
+    cmd_argv[i++] = "-b";
+    cmd_argv[i++] = "/sys";
+    cmd_argv[i++] = "-b";
+    cmd_argv[i++] = "/dev";
+    cmd_argv[i++] = "-b";
+    cmd_argv[i++] = "/etc/resolv.conf";
+
+    if (argc > 0) {
+        for (int j = 0; j < argc; j++)
+            cmd_argv[i++] = argv[j];
+    } else {
+        cmd_argv[i++] = "/bin/sh";
+    }
+
+    cmd_argv[i] = NULL;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        free(cmd_argv);
+        return -1;
+    }
+
+    if (pid == 0) {
+        execvp("nsenter", cmd_argv);
+        _exit(127);
+    }
+
+    free(cmd_argv);
+
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+    return -1;
+}
+
 static rn_err_t proot_run(const char *image, int argc, char **argv)
 {
     if (!image || !image[0])
@@ -147,12 +231,19 @@ static rn_err_t proot_exec(const char *instance, int argc, char **argv)
 
     riftprint("Executing in instance '%s' (proot)", instance);
 
-    int rc = run_proot(inst_path, argc, argv);
+    int rc;
+    if (proot_net_is_active(instance)) {
+        rc = run_proot_in_ns(instance, inst_path, argc, argv);
+    } else {
+        rc = run_proot(inst_path, argc, argv);
+    }
     return rc == 0 ? RN_OK : RN_ERR_INSTANCE_EXEC;
 }
 
 static rn_err_t proot_destroy(const char *instance)
 {
+    if (proot_net_is_active(instance))
+        proot_net_teardown(instance);
     return instance_destroy(instance);
 }
 

@@ -132,7 +132,7 @@ riftnest rmi alpine
 
 ### `riftnest net up <instance> [port-forward]`
 
-Set up networking for an instance. On the proot backend, this launches a rootlesskit+slirp4netns stack. On QEMU, networking is handled inline by the VM launch command.
+Set up networking for an instance. On the proot backend, this creates a network namespace via `unshare --net` and runs `slirp4netns` inside it. On QEMU, networking is handled inline by the VM launch command.
 
 ```sh
 riftnest net up mybox

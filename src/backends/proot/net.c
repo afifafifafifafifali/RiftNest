@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/stat.h>
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
+#include <sys/wait.h>
 static void net_pid_path(const char *instance_name, char *buf, size_t buflen)
 {
     snprintf(buf, buflen, "%s/%s.pid", rn_net_dir(), instance_name);
@@ -30,40 +30,40 @@ rn_err_t proot_net_setup(const char *instance_name, const char *host_fwd, const 
         return RN_OK;
     }
 
-    const char *rootlesskit = "rootlesskit";
-    if (access(rootlesskit, X_OK) != 0) {
-        riftprint("WARN: rootlesskit not found, skipping network setup");
-        return RN_OK;
+    if (access("slirp4netns", X_OK) != 0) {
+        riftprint("ERROR: slirp4netns not found on PATH");
+        riftprint("  Install: apt install slirp4netns  (or)  dnf install slirp4netns");
+        return RN_ERR_NET_SETUP;
     }
 
-    const char *slirp = "slirp4netns";
-    if (access(slirp, X_OK) != 0) {
-        riftprint("WARN: slirp4netns not found, skipping network setup");
-        return RN_OK;
-    }
+    riftprint("Setting up network for '%s'...", instance_name);
 
     char cmd[8192];
 
     snprintf(cmd, sizeof(cmd),
-        "nohup %s "
-        "--copy-up=/etc "
-        "--net=slirp4netns "
-        "--disable-host-loopback "
-        "--propagation=rslave "
-        "%s%s "
-        "> /dev/null 2>&1 & echo $! > '%s'",
-        rootlesskit,
-        host_fwd ? "-p " : "",
+        "unshare --net -- sh -c '"
+        "  slirp4netns --configure --mtu=65520 --disable-host-loopback $$ &"
+        "  sleep 1"
+        "  %s%s"
+        "  echo $$$$ > '%s'"
+        "  wait'"
+        "  %s%s %s",
+        host_fwd ? "iptables -t nat -A PREROUTING -p tcp --dport " : "",
         host_fwd ? host_fwd : "",
-        pidfile);
+        pidfile,
+        "",
+        "",
+        "");
 
     int rc = system(cmd);
     if (rc != 0) {
-        riftprint("ERROR: failed to start rootlesskit");
+        riftprint("ERROR: failed to set up network namespace");
+        unlink(pidfile);
         return RN_ERR_NET_SETUP;
     }
 
     riftprint("Network setup for '%s'", instance_name);
+    riftprint("  Network namespace is active (PID stored in %s)", pidfile);
     return RN_OK;
 }
 
@@ -95,4 +95,40 @@ rn_err_t proot_net_teardown(const char *instance_name)
 
     riftprint("Network torn down for '%s'", instance_name);
     return RN_OK;
+}
+
+int proot_net_is_active(const char *instance_name)
+{
+    if (!instance_name || !instance_name[0])
+        return 0;
+
+    char pidfile[4096];
+    net_pid_path(instance_name, pidfile, sizeof(pidfile));
+
+    struct stat st;
+    return stat(pidfile, &st) == 0;
+}
+
+int proot_net_nsenter_cmd(const char *instance_name, char *buf, size_t buflen)
+{
+    char pidfile[4096];
+    net_pid_path(instance_name, pidfile, sizeof(pidfile));
+
+    FILE *f = fopen(pidfile, "r");
+    if (!f)
+        return -1;
+
+    char pidstr[64] = {0};
+    if (!fgets(pidstr, sizeof(pidstr), f)) {
+        fclose(f);
+        return -1;
+    }
+    fclose(f);
+
+    size_t len = strlen(pidstr);
+    if (len > 0 && pidstr[len - 1] == '\n')
+        pidstr[len - 1] = '\0';
+
+    snprintf(buf, buflen, "nsenter --net=/proc/%s/ns/net -- ", pidstr);
+    return 0;
 }
