@@ -11,6 +11,8 @@
 
 static void usage(void)
 {
+    riftprint("Copyright (c) Afif Ali Saadman & Corex Team, 2026. RiftNest Containerization Platform. CC-BY-SA 4.0");
+    riftprint("[RIFTNOTICE] Some features require root priviliges. Best to run riftnest binary with sudo or inside a root user.");
     riftprint("Usage:");
     riftprint("  riftnest pull <name> <url>          Download and extract a rootfs image");
     riftprint("  riftnest list                        List available images and instances");
@@ -32,6 +34,8 @@ riftprint("  qemu            - full VM via QEMU/TCG, requires root for isolation
 
 int main(int argc, char **argv)
 {
+    riftprint("Copyright (c) Afif Ali Saadman & Corex Team, 2026. RiftNest Containerization Platform. CC-BY-SA 4.0");
+    
     if (argc < 2) {
         usage();
         return 1;
