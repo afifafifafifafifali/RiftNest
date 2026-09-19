@@ -1,5 +1,5 @@
-#pragma once
 // Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
+#pragma once
 // ENUMS MAKES OUR LIVES EASY
 #include <stdint.h>
 

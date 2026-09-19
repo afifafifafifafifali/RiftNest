@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include "image.h"
 #include "paths.h"
@@ -9,7 +10,6 @@
 #include <unistd.h>
 #include <dirent.h>
 
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 static void ensure_dir(const char *path)
 {
     mkdir(path, 0755);

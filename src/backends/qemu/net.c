@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include "net.h"
 #include "../../paths.h"
@@ -8,7 +9,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <sys/stat.h>
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 
 static void net_pid_path(const char *instance_name, char *buf, size_t buflen)
 {

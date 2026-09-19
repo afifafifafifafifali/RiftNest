@@ -19,14 +19,15 @@ A lightweight container runtime for Linux, written in C11. Runs rootfs images us
 - `make`
 - `curl` (for image pulls)
 - `tar` (for image extraction)
+- **Root privileges** (effective UID 0) for full isolation and all features
 
 Optional (for QEMU backend):
 - `qemu-system-x86_64` >= 10.0.0
 - A Linux kernel (`vmlinuz`) and optionally an initramfs in `~/.riftnest/kernel/`
 
 Optional (for networking):
-- `rootlesskit` + `slirp4netns` (proot backend)
-- QEMU's built-in user-mode networking (QEMU backend, no extra deps)
+- `rootlesskit` + `slirp4netns` (proot backend, works without root)
+- QEMU's built-in user-mode networking (QEMU backend, requires root)
 
 ## Installation
 

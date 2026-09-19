@@ -1,7 +1,7 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #pragma once
 
 #include "errorcodes.h"
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 typedef struct rn_backend {
     const char *name;
 

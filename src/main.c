@@ -1,12 +1,14 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "backend.h"
 #include "image.h"
 #include "instance.h"
 #include "misc/riftprint.h"
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
+
 static void usage(void)
 {
     riftprint("Usage:");
@@ -24,8 +26,8 @@ static void usage(void)
     riftprint("  RIFTNEST_HOME  Base dir (default: ~/.riftnest)");
     riftprint("%s", "");
     riftprint("Backends:");
-    riftprint("  proot (default) - lightweight ptrace-based, no root required");
-    riftprint("  qemu            - full VM via QEMU/TCG, 9p shared rootfs");
+riftprint("  proot (default) - ptrace-based isolation, works without root");
+riftprint("  qemu            - full VM via QEMU/TCG, requires root for isolation");
 }
 
 int main(int argc, char **argv)
@@ -33,6 +35,17 @@ int main(int argc, char **argv)
     if (argc < 2) {
         usage();
         return 1;
+    }
+
+    if (geteuid() != 0) {
+        if (strcmp(argv[1], "run") == 0 ||
+            strcmp(argv[1], "exec") == 0 ||
+            strcmp(argv[1], "create") == 0 ||
+            strcmp(argv[1], "net") == 0) {
+            riftprint("ERROR: This operation requires root privileges for isolation.");
+            riftprint("       Some features work without root: list, pull, rmi, destroy, help");
+            return 1;
+        }
     }
 
     const char *cmd = argv[1];

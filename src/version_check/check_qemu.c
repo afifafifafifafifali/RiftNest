@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 
 #include "check_qemu.h"

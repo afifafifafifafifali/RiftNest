@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include "instance.h"
 #include "paths.h"
@@ -8,7 +9,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 rn_err_t instance_create(const char *name, const char *image)
 {
     if (!name || !name[0] || !image || !image[0])

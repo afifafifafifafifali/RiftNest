@@ -1,5 +1,5 @@
-#pragma once
 // Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
+#pragma once
 #define RN_HOME_ENV    "RIFTNEST_HOME"
 #define RN_HOME_DEFAULT ".riftnest"
 #define RN_IMAGES_DIR  "images"

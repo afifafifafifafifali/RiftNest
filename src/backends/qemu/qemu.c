@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include "../../backend.h"
 #include "../../paths.h"
@@ -11,7 +12,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 struct qemu_ver {
     int major;
     int minor;

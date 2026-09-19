@@ -1,4 +1,3 @@
-target/
-src/backends/proot/vendor/
 *.o
 *.d
+target/

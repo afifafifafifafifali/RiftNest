@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include "paths.h"
 #include <stdio.h>
@@ -5,7 +6,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 static char home_buf[4096];
 static char images_buf[4096];
 static char inst_buf[4096];

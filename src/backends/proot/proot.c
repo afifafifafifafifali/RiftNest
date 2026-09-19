@@ -1,3 +1,4 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #define _POSIX_C_SOURCE 200809L
 #include "../../backend.h"
 #include "../../paths.h"
@@ -109,78 +110,45 @@ static int run_proot(const char *rootfs, int argc, char **argv)
 static int run_proot_in_ns(const char *instance_name, const char *rootfs,
                            int argc, char **argv)
 {
-    char nsenter_cmd[4096];
-    if (proot_net_nsenter_cmd(instance_name, nsenter_cmd, sizeof(nsenter_cmd)) != 0) {
-        riftprint("WARN: failed to get network namespace, running without network");
-        return run_proot(rootfs, argc, argv);
-    }
+    (void)instance_name;
+
+    riftprint("Running inside network namespace (net enabled for '%s')", instance_name);
 
     const char *bin = proot_bin_path();
 
-    char rootfs_arg[4096];
-    snprintf(rootfs_arg, sizeof(rootfs_arg), "%s", rootfs);
+    char proot_cmd[8192];
+    int pos = 0;
+    pos += snprintf(proot_cmd + pos, sizeof(proot_cmd) - pos,
+        "%s -r %s -b /proc -b /sys -b /dev -b /etc/resolv.conf", bin, rootfs);
 
-    riftprint("Running inside network namespace (net up for '%s')", instance_name);
+    for (int j = 0; j < argc; j++)
+        pos += snprintf(proot_cmd + pos, sizeof(proot_cmd) - pos, " %s", argv[j]);
 
-    int cmd_argc = argc + 20;
-    char **cmd_argv = calloc(cmd_argc + 1, sizeof(char *));
-    if (!cmd_argv)
-        return run_proot(rootfs, argc, argv);
+    if (argc == 0)
+        pos += snprintf(proot_cmd + pos, sizeof(proot_cmd) - pos, " /bin/sh");
 
-    int i = 0;
-    cmd_argv[i++] = "nsenter";
-    cmd_argv[i++] = "--net";
-
-    char ns_path[512];
-    char pidfile[4096];
-    snprintf(pidfile, sizeof(pidfile), "%s/%s.pid", rn_net_dir(), instance_name);
-    FILE *f = fopen(pidfile, "r");
-    if (f) {
-        char pidstr[64] = {0};
-        if (fgets(pidstr, sizeof(pidstr), f)) {
-            size_t len = strlen(pidstr);
-            if (len > 0 && pidstr[len - 1] == '\n')
-                pidstr[len - 1] = '\0';
-            snprintf(ns_path, sizeof(ns_path), "/proc/%s/ns/net", pidstr);
-            cmd_argv[i++] = ns_path;
-        }
-        fclose(f);
-    }
-
-    cmd_argv[i++] = "--";
-    cmd_argv[i++] = (char *)bin;
-    cmd_argv[i++] = "-r";
-    cmd_argv[i++] = rootfs_arg;
-    cmd_argv[i++] = "-b";
-    cmd_argv[i++] = "/proc";
-    cmd_argv[i++] = "-b";
-    cmd_argv[i++] = "/sys";
-    cmd_argv[i++] = "-b";
-    cmd_argv[i++] = "/dev";
-    cmd_argv[i++] = "-b";
-    cmd_argv[i++] = "/etc/resolv.conf";
-
-    if (argc > 0) {
-        for (int j = 0; j < argc; j++)
-            cmd_argv[i++] = argv[j];
-    } else {
-        cmd_argv[i++] = "/bin/sh";
-    }
-
-    cmd_argv[i] = NULL;
+    char script[16384];
+    snprintf(script, sizeof(script),
+        "exec unshare --user --map-root-user --net -- sh -c '"
+        "sleep infinity & "
+        "NSPID=$!; "
+        "sleep 0.5; "
+        "slirp4netns --configure --mtu=65520 --disable-host-loopback $NSPID tap0 & "
+        "sleep 1.5; "
+        "kill $NSPID 2>/dev/null; "
+        "exec %s'"
+        "",
+        proot_cmd);
 
     pid_t pid = fork();
-    if (pid < 0) {
-        free(cmd_argv);
+    if (pid < 0)
         return -1;
-    }
 
     if (pid == 0) {
-        execvp("nsenter", cmd_argv);
+        setsid();
+        execlp("sh", "sh", "-c", script, (char *)NULL);
         _exit(127);
     }
-
-    free(cmd_argv);
 
     int status;
     waitpid(pid, &status, 0);

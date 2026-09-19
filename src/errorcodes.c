@@ -1,6 +1,6 @@
+// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 #include "errorcodes.h"
 
-// Copyright (c) Afif Ali Saadman 2026. RiftNest containerization protocol
 const char *rn_err_str(rn_err_t err)
 {
     switch (err) {
