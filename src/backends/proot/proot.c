@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <time.h>
 
 static const char *proot_bin_path(void)
 {
@@ -55,24 +56,40 @@ static rn_err_t proot_list_instances(void)
     return instance_list();
 }
 
+static void rmrf(const char *path)
+{
+    char cmd[4096];
+    snprintf(cmd, sizeof(cmd), "rm -rf '%s'", path);
+    system(cmd);
+}
+
 static int run_proot(const char *rootfs, int argc, char **argv)
 {
     const char *bin = proot_bin_path();
 
-    // Create a temporary copy of the rootfs for ephemeral execution
-    char tmpdir[4096];
-    snprintf(tmpdir, sizeof(tmpdir), "%s/tmp/run_XXXXXX", rn_home());
-    mkdir(tmpdir, 0700);
+    char tmpbase[4096];
+    snprintf(tmpbase, sizeof(tmpbase), "%s/tmp", rn_home());
+    mkdir(tmpbase, 0700);
 
-    // Copy the rootfs to the temp directory
+    char tmpdir[4096];
+    snprintf(tmpdir, sizeof(tmpdir), "%s/tmp/rn_XXXXXXXX", rn_home());
+    if (!mkdtemp(tmpdir)) {
+        riftprint("ERROR: failed to create temp directory");
+        return -1;
+    }
+
     char copy_cmd[8192];
-    snprintf(copy_cmd, sizeof(copy_cmd), "cp -a '%s' '%s'/.", rootfs, tmpdir);
-    system(copy_cmd);
+    snprintf(copy_cmd, sizeof(copy_cmd), "cp -a '%s/.' '%s'/.", rootfs, tmpdir);
+    if (system(copy_cmd) != 0) {
+        riftprint("ERROR: failed to copy rootfs to temp directory");
+        rmrf(tmpdir);
+        return -1;
+    }
 
     int proot_argc = 10 + argc;
     char **proot_argv = calloc(proot_argc + 1, sizeof(char *));
     if (!proot_argv) {
-        rmdir(tmpdir);
+        rmrf(tmpdir);
         return -1;
     }
 
@@ -101,7 +118,7 @@ static int run_proot(const char *rootfs, int argc, char **argv)
     pid_t pid = fork();
     if (pid < 0) {
         free(proot_argv);
-        rmdir(tmpdir);
+        rmrf(tmpdir);
         return -1;
     }
 
@@ -115,8 +132,7 @@ static int run_proot(const char *rootfs, int argc, char **argv)
     int status;
     waitpid(pid, &status, 0);
 
-    // Clean up the temp directory after proot exits
-    rmdir(tmpdir);
+    rmrf(tmpdir);
 
     if (WIFEXITED(status))
         return WEXITSTATUS(status);
