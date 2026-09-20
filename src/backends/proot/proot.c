@@ -59,15 +59,27 @@ static int run_proot(const char *rootfs, int argc, char **argv)
 {
     const char *bin = proot_bin_path();
 
+    // Create a temporary copy of the rootfs for ephemeral execution
+    char tmpdir[4096];
+    snprintf(tmpdir, sizeof(tmpdir), "%s/tmp/run_XXXXXX", rn_home());
+    mkdir(tmpdir, 0700);
+
+    // Copy the rootfs to the temp directory
+    char copy_cmd[8192];
+    snprintf(copy_cmd, sizeof(copy_cmd), "cp -a '%s' '%s'/.", rootfs, tmpdir);
+    system(copy_cmd);
+
     int proot_argc = 10 + argc;
     char **proot_argv = calloc(proot_argc + 1, sizeof(char *));
-    if (!proot_argv)
+    if (!proot_argv) {
+        rmdir(tmpdir);
         return -1;
+    }
 
     int i = 0;
     proot_argv[i++] = (char *)bin;
     proot_argv[i++] = "-r";
-    proot_argv[i++] = (char *)rootfs;
+    proot_argv[i++] = tmpdir;
     proot_argv[i++] = "-b";
     proot_argv[i++] = "/proc";
     proot_argv[i++] = "-b";
@@ -89,6 +101,7 @@ static int run_proot(const char *rootfs, int argc, char **argv)
     pid_t pid = fork();
     if (pid < 0) {
         free(proot_argv);
+        rmdir(tmpdir);
         return -1;
     }
 
@@ -101,6 +114,9 @@ static int run_proot(const char *rootfs, int argc, char **argv)
 
     int status;
     waitpid(pid, &status, 0);
+
+    // Clean up the temp directory after proot exits
+    rmdir(tmpdir);
 
     if (WIFEXITED(status))
         return WEXITSTATUS(status);
