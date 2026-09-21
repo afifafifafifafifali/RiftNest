@@ -139,6 +139,58 @@ static int run_proot(const char *rootfs, int argc, char **argv)
     return -1;
 }
 
+static int exec_proot(const char *rootfs, int argc, char **argv)
+{
+    const char *bin = proot_bin_path();
+
+    int proot_argc = 10 + argc;
+    char **proot_argv = calloc(proot_argc + 1, sizeof(char *));
+    if (!proot_argv)
+        return -1;
+
+    int i = 0;
+    proot_argv[i++] = (char *)bin;
+    proot_argv[i++] = "-r";
+    proot_argv[i++] = (char *)rootfs;
+    proot_argv[i++] = "-b";
+    proot_argv[i++] = "/proc";
+    proot_argv[i++] = "-b";
+    proot_argv[i++] = "/sys";
+    proot_argv[i++] = "-b";
+    proot_argv[i++] = "/dev";
+    proot_argv[i++] = "-b";
+    proot_argv[i++] = "/etc/resolv.conf";
+
+    if (argc > 0) {
+        for (int j = 0; j < argc; j++)
+            proot_argv[i++] = argv[j];
+    } else {
+        proot_argv[i++] = "/bin/sh";
+    }
+
+    proot_argv[i] = NULL;
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        free(proot_argv);
+        return -1;
+    }
+
+    if (pid == 0) {
+        execvp(bin, proot_argv);
+        _exit(127);
+    }
+
+    free(proot_argv);
+
+    int status;
+    waitpid(pid, &status, 0);
+
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
+    return -1;
+}
+
 static int run_proot_in_ns(const char *instance_name, const char *rootfs,
                            int argc, char **argv)
 {
@@ -235,7 +287,7 @@ static rn_err_t proot_exec(const char *instance, int argc, char **argv)
     if (proot_net_is_active(instance)) {
         rc = run_proot_in_ns(instance, inst_path, argc, argv);
     } else {
-        rc = run_proot(inst_path, argc, argv);
+        rc = exec_proot(inst_path, argc, argv);
     }
     return rc == 0 ? RN_OK : RN_ERR_INSTANCE_EXEC;
 }
