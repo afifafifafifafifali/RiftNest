@@ -1,6 +1,6 @@
 *.o
 *.d
 target/
-vpnuser-key
-bundled_for_public/vpnuser-key
-*.ovpn
+
+bundled_for_public/
+
