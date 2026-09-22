@@ -1,0 +1,13 @@
+# RiftNest VPN — SSH config bundle
+# Copy this file to ~/.ssh/config  (or: ssh -F ./ssh_config riftnest-vpn -N)
+# Requires: vpnuser-key in ~/.ssh/  (copy it there first, chmod 600)
+
+Host riftnest-vpn
+    HostName ecranberryctfserver.n3.sparkden.cloud
+    Port 45912
+    User vpnuser
+    IdentityFile %d/.ssh/riftnest-vpnuser-key
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
+    ExitOnForwardFailure yes
+    LocalForward 1194 127.0.0.1:1194

@@ -1,0 +1,54 @@
+# priv_ops — RiftNest private operations
+
+Helper scripts for giving persistent RiftNest instances their own
+routable IPs + SSH access. Reachable over VPN only (10.0.2.x clients).
+
+## IP plan (all /24, gateway always x.x.x.1 on br0)
+
+| Range       | Purpose              | Gateway  |
+|-------------|----------------------|----------|
+| 10.0.2.0/24 | VPN clients          | 10.0.2.1 (tun0) |
+| 10.0.3.0/24 | Containers (pool A)  | 10.0.3.1 (br0)  |
+| 10.0.4.0/24 | Containers (pool B)  | 10.0.4.1 (br0)  |
+| 10.0.5.0/24 | Containers (pool C)  | 10.0.5.1 (br0)  |
+
+`.4.x` and `.5.x` are extra container pools (sometimes called VMs —
+same thing here). Pick the next free address in the range you want.
+
+## mybox-netns.sh
+
+Attaches a persistent instance to br0 with its own IP and starts
+dropbear (SSH) inside it under proot in that network namespace.
+
+Live copy: `/root/mybox-netns.sh` (this dir holds a reference copy).
+
+Usage:
+  bash /root/mybox-netns.sh <name> <ip>
+
+Examples:
+  bash /root/mybox-netns.sh apidemo 10.0.3.3   # container range
+  bash /root/mybox-netns.sh webvm  10.0.4.2    # VM range
+
+What it does:
+  1. Kills any stale holder/veth for <name>
+  2. Creates a persistent network namespace (sleep-infinity holder)
+  3. Creates veth pair, plugs host end into br0
+  4. Assigns <ip>/24 + default route via x.x.x.1 inside the namespace
+  5. Starts dropbear under proot rooted at the instance dir, port 22
+
+Prerequisites (per instance, one time, via riftnest CLI):
+  riftnest create <name> <image>
+  riftnest exec <name> /sbin/apk add dropbear
+  riftnest exec <name> /bin/sh -c "mkdir -p /etc/dropbear && /usr/bin/dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key"
+  riftnest exec <name> /bin/sh -c "echo root:<password> | chpasswd"
+
+Then connect (VPN up):
+  ssh root@<ip>
+
+## Notes
+- Namespaces die on reboot — rerun the script per instance after reboot
+  (or wire it into a systemd unit later).
+- br0 carries all three ranges; secondary addresses .4.1/.5.1 are
+  configured by riftnet-netinit.sh on boot.
+- OpenVPN pushes routes for all three ranges; reconnect VPN clients
+  after changing pushed routes.
