@@ -11,8 +11,15 @@ routable IPs + SSH access. Reachable over VPN only (10.0.2.x clients).
 | 10.0.3.0/24 | Containers (pool A)  | 10.0.3.1 (br0)  |
 | 10.0.4.0/24 | Containers (pool B)  | 10.0.4.1 (br0)  |
 | 10.0.5.0/24 | Containers (pool C)  | 10.0.5.1 (br0)  |
+| 10.0.6.0/24 | Containers (pool D)  | 10.0.6.1 (br0)  |
+| 10.0.7.0/24 | Containers (pool E)  | 10.0.7.1 (br0)  |
+| 10.0.8.0/24 | Containers (pool F)  | 10.0.8.1 (br0)  |
+| 10.0.9.0/24 | Containers (pool G)  | 10.0.9.1 (br0)  |
+| 10.0.10.0/24 | Containers (pool H) | 10.0.10.1 (br0) |
+| 10.0.11.0/24 | Containers (pool I) | 10.0.11.1 (br0) |
+| 10.0.12.0/24 | Containers (pool J) | 10.0.12.1 (br0) |
 
-`.4.x` and `.5.x` are extra container pools (sometimes called VMs —
+`.4.x` through `.12.x` are extra container pools (sometimes called VMs —
 same thing here). Pick the next free address in the range you want.
 
 ## mybox-netns.sh
