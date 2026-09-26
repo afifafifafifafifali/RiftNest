@@ -7,7 +7,7 @@ routable IPs + SSH access. Reachable over VPN only (10.0.2.x clients).
 
 | Range       | Purpose              | Gateway  |
 |-------------|----------------------|----------|
-| 10.0.2.0/24 | VPN clients          | 10.0.2.1 (tun0) |
+| 10.1.0.0/16 | VPN clients (65k)    | 10.1.0.1 (tun0) |
 | 10.0.3.0/24 | Containers (pool A)  | 10.0.3.1 (br0)  |
 | 10.0.4.0/24 | Containers (pool B)  | 10.0.4.1 (br0)  |
 | 10.0.5.0/24 | Containers (pool C)  | 10.0.5.1 (br0)  |
@@ -59,3 +59,16 @@ Then connect (VPN up):
   configured by riftnet-netinit.sh on boot.
 - OpenVPN pushes routes for all three ranges; reconnect VPN clients
   after changing pushed routes.
+
+## VPN client capacity
+
+- Pool `10.1.0.0/16` fits 65,533 clients; daemon cap is `max-clients`
+  (currently 30000) in `/etc/openvpn/server.conf` — the cap wins.
+- One shared client cert for everyone (`duplicate-cn`); no per-user certs.
+- To raise the cap (stay within 65,533):
+    sed -i "s/^max-clients .*/max-clients <N>/" /etc/openvpn/server.conf
+    killall openvpn; sleep 1
+    nohup openvpn --config /etc/openvpn/server.conf --log /var/log/openvpn/server.log >/dev/null 2>&1 &
+  then reconnect all clients (restart drops sessions).
+- Practical ceiling is the box itself (handshake CPU + RAM + bandwidth),
+  not the config — hundreds to low thousands on community hardware.
